@@ -8,6 +8,7 @@ import io
 from time import time, sleep
 
 WIDTH, HEIGHT = 256, 256
+FRAMERATE = 24
 
 surface = cairo.ImageSurface(cairo.FORMAT_ARGB32, WIDTH, HEIGHT)
 ctx = cairo.Context(surface)
@@ -19,14 +20,6 @@ memory_buffer = io.BytesIO()
 app = flask.Flask(__name__)
 
 
-class Camera(object):
-    def __init__(self):
-        self.frames = [open('example_' + f + '.png', 'rb').read() for f in ['1', '2', '3']]
-
-    def get_frame(self):
-        return self.frames[int(time()*24) % 3]
-
-
 @app.route('/')
 def index():
     return flask.render_template('index3.html')
@@ -34,10 +27,10 @@ def index():
 
 @app.route("/next_img")
 def next_img():
-    return flask.Response(img_generator(Camera()), mimetype='multipart/x-mixed-replace; boundary=frame')
+    return flask.Response(img_generator(), mimetype='multipart/x-mixed-replace; boundary=frame')
 
 
-def img_generator(camera):
+def img_generator():
     i = -1
     while True:
         # frame = camera.get_frame()
@@ -57,7 +50,8 @@ def img_generator(camera):
         ctx.stroke()
         memory_buffer.seek(0)
         surface.write_to_png(memory_buffer)
-        sleep(0.01)
+        memory_buffer.seek(0)
+        sleep(1/FRAMERATE)
         yield (b'--frame\r\n'
                b'Content-Type: image/png\r\n\r\n' + memory_buffer.read() + b'\r\n')
 
